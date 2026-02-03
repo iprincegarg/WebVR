@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>WebVR Video Player</title>
+    <meta name="description" content="WebVR 360 Video Player">
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <style>
+        #overlay {
+            position: absolute;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-family: sans-serif;
+            flex-direction: column;
+            cursor: pointer;
+        }
+
+        #overlay.hidden {
+            display: none;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .play-btn {
+            padding: 15px 30px;
+            background: #e91e63;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 20px;
+        }
+
+        .play-btn:hover {
+            background: #c2185b;
+        }
+
+        .upload-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 1px solid #ccc;
+            display: inline-block;
+            padding: 6px 12px;
+            cursor: pointer;
+            background: white;
+            color: black;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Overlay for Play Button -->
+    <div id="overlay">
+        <h1>WebVR 360 Player</h1>
+
+        <div class="upload-container">
+            <label for="file-upload" class="custom-file-upload">
+                <i class="fa fa-cloud-upload"></i> Upload Local Video
+            </label>
+            <input id="file-upload" type="file" accept="video/*" />
+            <p id="file-name" style="font-size: 0.8em; margin-top: 5px;">No file selected (Using default)</p>
+        </div>
+
+        <button class="play-btn">Play Video</button>
+    </div>
+
+    <a-scene>
+        <a-assets>
+            <!-- Sample 360 video from A-Frame CDN -->
+            <video id="video360" src="https://cdn.aframe.io/360-video-and-images/antarctica.mp4" loop="true"
+                crossorigin="anonymous" playsinline webkit-playsinline></video>
+        </a-assets>
+
+        <!-- 360 Video Sphere -->
+        <a-videosphere src="#video360" rotation="0 -90 0"></a-videosphere>
+
+        <!-- Camera with look controls (mouse drag + gyro) -->
+        <a-entity camera look-controls="reverseMouseDrag: true" position="0 0 0">
+            <a-entity cursor="fuse: false; rayOrigin: mouse;" position="0 0 -1"
+                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" material="color: black; shader: flat"
+                visible="false">
+            </a-entity>
+        </a-entity>
+    </a-scene>
+
+    <script>
+        const overlay = document.querySelector('#overlay');
+        const video = document.querySelector('#video360');
+        const playBtn = document.querySelector('.play-btn');
+        const fileInput = document.querySelector('#file-upload');
+        const fileNameDisplay = document.querySelector('#file-name');
+
+        // Prevent overlay click from triggering play immediately if clicking upload
+        // logic handled by specific event listeners below
+
+        fileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                video.src = fileURL;
+                fileNameDisplay.textContent = "Selected: " + file.name;
+            }
+        });
+
+        playBtn.addEventListener('click', function () {
+            // Hide overlay
+            overlay.classList.add('hidden');
+
+            // Play video
+            video.play();
+        });
+
+        // Handle simple keyboard controls for testing
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (video.paused) video.play();
+                else video.pause();
+            }
+        });
+    </script>
+
+</body>
+
+</html>
