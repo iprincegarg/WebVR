@@ -5,7 +5,7 @@ A simple web-based 360-degree video player built with [A-Frame](https://aframe.i
 ## Features
 - **360 Video Playback**: Immersive video experience.
 - **Motion Controls**: Look around using mouse drag (desktop) or device orientation (mobile).
-- **Local Video Upload**: Play your own 360° MP4 videos directly from your device.
+- **Local Video Upload**: Play your own 360 MP4 videos directly from your device.
 
 ## How to Use
 1. **Open the Player**:
@@ -28,4 +28,11 @@ A simple web-based 360-degree video player built with [A-Frame](https://aframe.i
    - **Upload**: Click "Upload Local Video" to select a file from your computer.
    - **Look Around**:
      - **Desktop**: Click and drag on the screen.
-     - **Mobile**: Move your phone around (gyroscope) or drag on the screen.
+     - **Mobile**: Move your phone around (gyroscope) or drag on screen.
+   - **Seek (Double Tap/Click)**:
+     - **Rewind 10s**: Double click/tap the **LEFT** side of the screen.
+     - **Forward 10s**: Double click/tap the **RIGHT** side of the screen.
+   - **Keyboard Shortcuts**:
+     - **Space**: Play/Pause
+     - **Left Arrow**: Rewind 10s
+     - **Right Arrow**: Forward 10s
