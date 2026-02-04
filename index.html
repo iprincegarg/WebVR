@@ -242,7 +242,7 @@
 <body>
     <!-- Initial Overlay -->
     <div id="overlay">
-        <h1>WebVR 360 Player by Prince Garg</h1>
+        <h1>WebVR-Based 360° Video Player for Local Device Playback by Prince Garg</h1>
 
         <div class="upload-container">
             <label for="file-upload" class="custom-file-upload">
@@ -252,7 +252,7 @@
             <p id="file-name" style="font-size: 0.9em; margin-top: 10px; color: #aaa;">Default Video Loaded</p>
         </div>
 
-        <button class="play-btn-large">
+        <button class="play-btn-large" style="display: none;">
             <i class="fa fa-play"></i> Start Experience
         </button>
     </div>
@@ -336,6 +336,7 @@
                     video.src = fileURL;
                     fileNameDisplay.textContent = file.name;
                     video.load();
+                    playBtnLarge.style.display = 'flex';
                 }
             });
 
