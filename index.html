@@ -67,6 +67,55 @@
             color: black;
             border-radius: 4px;
         }
+
+        .seek-feedback {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 20px;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            /* Let clicks pass through */
+            z-index: 2000;
+            font-weight: bold;
+        }
+
+        .seek-feedback.left {
+            left: 20%;
+        }
+
+        .seek-feedback.right {
+            right: 20%;
+        }
+
+        .animate-feedback {
+            animation: feedbackFade 0.6s ease-out forwards;
+        }
+
+        @keyframes feedbackFade {
+            0% {
+                opacity: 0;
+                transform: translateY(-50%) scale(0.5);
+            }
+
+            20% {
+                opacity: 1;
+                transform: translateY(-50%) scale(1.1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-50%) scale(1.5);
+            }
+        }
     </style>
 </head>
 
@@ -132,11 +181,100 @@
             video.play();
         });
 
-        // Handle simple keyboard controls for testing
+        // Video Seek Logic
+        const SEEK_TIME = 10; // seconds
+        let lastTapTime = 0;
+        let lastTapX = 0;
+        const DOUBLE_TAP_DELAY = 300; // ms
+        const TAP_POSITION_THRESHOLD = 50; // px (max distance between taps)
+
+        // Feedback Elements
+        const feedbackContainer = document.createElement('div');
+        feedbackContainer.innerHTML = `
+            <div id="seek-feedback-left" class="seek-feedback left">
+                <i class="fa fa-backward"></i>
+                <span>-10s</span>
+            </div>
+            <div id="seek-feedback-right" class="seek-feedback right">
+                <i class="fa fa-forward"></i>
+                <span>+10s</span>
+            </div>
+        `;
+        document.body.appendChild(feedbackContainer);
+
+        const feedbackLeft = document.getElementById('seek-feedback-left');
+        const feedbackRight = document.getElementById('seek-feedback-right');
+
+        // Main Interaction Listener
+        // We use 'click' because it works for both mouse and touch reasonably well for this simple case.
+        // A-Frame captures some events, so we listen on the document or a specific container if possible.
+        // listening on window/document ensuring we capture bubble up.
+
+        window.addEventListener('click', (e) => {
+            // Ignore clicks on buttons/inputs
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('label')) return;
+
+            const currentTime = new Date().getTime();
+            const tapGap = currentTime - lastTapTime;
+
+            // Check double tap timing
+            if (tapGap < DOUBLE_TAP_DELAY && tapGap > 0) {
+                // Check distance (to avoid treating two distant taps as double tap)
+                // (Optional for mouse, useful for touch if user uses two fingers lightly)
+                // For simplicity, we just use X position.
+
+                const width = window.innerWidth;
+                const x = e.clientX;
+
+                if (x < width * 0.3) {
+                    // Left 30% - Rewind
+                    seekVideo(-SEEK_TIME);
+                    showFeedback(feedbackLeft);
+                } else if (x > width * 0.7) {
+                    // Right 30% - Forward
+                    seekVideo(SEEK_TIME);
+                    showFeedback(feedbackRight);
+                }
+
+                // Reset to prevent triple-tap triggering another immediate double
+                lastTapTime = 0;
+            } else {
+                lastTapTime = currentTime;
+            }
+        });
+
+        function seekVideo(timeChange) {
+            if (!video) return;
+            video.currentTime += timeChange;
+        }
+
+        function showFeedback(element) {
+            // Reset animation
+            element.style.display = 'flex';
+            element.classList.remove('animate-feedback');
+
+            // Trigger reflow
+            void element.offsetWidth;
+
+            element.classList.add('animate-feedback');
+
+            // Hide after animation (approx match CSS transition)
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 600);
+        }
+
+        // Handle simple keyboard controls
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 if (video.paused) video.play();
                 else video.pause();
+            } else if (e.code === 'ArrowRight') {
+                seekVideo(SEEK_TIME);
+                showFeedback(feedbackRight);
+            } else if (e.code === 'ArrowLeft') {
+                seekVideo(-SEEK_TIME);
+                showFeedback(feedbackLeft);
             }
         });
     </script>
