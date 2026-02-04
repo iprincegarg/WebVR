@@ -6,7 +6,16 @@
     <title>WebVR Video Player</title>
     <meta name="description" content="WebVR 360 Video Player">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            /* Prevent scroll */
+        }
+
+        /* Initial Overlay */
         #overlay {
             position: absolute;
             z-index: 1000;
@@ -17,40 +26,48 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             color: white;
-            font-family: sans-serif;
             flex-direction: column;
-            cursor: pointer;
+            cursor: default;
+            transition: opacity 0.5s;
         }
 
         #overlay.hidden {
-            display: none;
+            opacity: 0;
+            pointer-events: none;
         }
 
         h1 {
-            font-size: 2em;
-            margin-bottom: 20px;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        .play-btn {
-            padding: 15px 30px;
-            background: #e91e63;
+        .play-btn-large {
+            padding: 15px 40px;
+            background: linear-gradient(45deg, #e91e63, #ff4081);
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 1.2em;
+            border-radius: 50px;
+            font-size: 1.5em;
             cursor: pointer;
-            transition: background 0.3s;
-            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(233, 30, 99, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .play-btn:hover {
-            background: #c2185b;
+        .play-btn-large:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(233, 30, 99, 0.6);
         }
 
         .upload-container {
-            margin-bottom: 20px;
+            margin-bottom: 40px;
             text-align: center;
         }
 
@@ -59,22 +76,123 @@
         }
 
         .custom-file-upload {
-            border: 1px solid #ccc;
+            border: 2px solid rgba(255, 255, 255, 0.2);
             display: inline-block;
-            padding: 6px 12px;
+            padding: 10px 20px;
             cursor: pointer;
-            background: white;
-            color: black;
-            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 30px;
+            font-size: 1em;
+            transition: background 0.3s, border-color 0.3s;
         }
 
+        .custom-file-upload:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Video Control Bar */
+        #video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            padding: 20px 20px 30px 20px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 900;
+            transition: opacity 0.3s, transform 0.3s;
+            opacity: 1;
+        }
+
+        #video-controls.hidden-controls {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(20px);
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .control-btn:hover {
+            color: #e91e63;
+        }
+
+        .progress-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #e91e63;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -5px;
+            /* centers thumb */
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .time-display {
+            font-size: 0.9em;
+            color: #ddd;
+            font-variant-numeric: tabular-nums;
+            min-width: 100px;
+            text-align: right;
+        }
+
+        /* Seek Feedback (Double Tap) */
         .seek-feedback {
             position: absolute;
             top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.6);
+            transform: translateY(-50%) scale(0.5);
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 20px;
+            padding: 25px;
             border-radius: 50%;
             width: 80px;
             height: 80px;
@@ -83,9 +201,10 @@
             align-items: center;
             justify-content: center;
             pointer-events: none;
-            /* Let clicks pass through */
             z-index: 2000;
             font-weight: bold;
+            font-size: 1.2em;
+            opacity: 0;
         }
 
         .seek-feedback.left {
@@ -98,6 +217,7 @@
 
         .animate-feedback {
             animation: feedbackFade 0.6s ease-out forwards;
+            display: flex;
         }
 
         @keyframes feedbackFade {
@@ -106,38 +226,64 @@
                 transform: translateY(-50%) scale(0.5);
             }
 
-            20% {
+            30% {
                 opacity: 1;
                 transform: translateY(-50%) scale(1.1);
             }
 
             100% {
                 opacity: 0;
-                transform: translateY(-50%) scale(1.5);
+                transform: translateY(-50%) scale(1.3);
             }
         }
     </style>
 </head>
 
 <body>
-    <!-- Overlay for Play Button -->
+    <!-- Initial Overlay -->
     <div id="overlay">
         <h1>WebVR 360 Player</h1>
 
         <div class="upload-container">
             <label for="file-upload" class="custom-file-upload">
-                <i class="fa fa-cloud-upload"></i> Upload Local Video
+                <i class="fa fa-folder-open"></i> Choose Video
             </label>
             <input id="file-upload" type="file" accept="video/*" />
-            <p id="file-name" style="font-size: 0.8em; margin-top: 5px;">No file selected (Using default)</p>
+            <p id="file-name" style="font-size: 0.9em; margin-top: 10px; color: #aaa;">Default Video Loaded</p>
         </div>
 
-        <button class="play-btn">Play Video</button>
+        <button class="play-btn-large">
+            <i class="fa fa-play"></i> Start Experience
+        </button>
     </div>
 
-    <a-scene>
+    <!-- Video Controls Bar -->
+    <div id="video-controls" class="hidden-controls">
+        <button id="play-pause-btn" class="control-btn">
+            <i class="fa fa-pause"></i>
+        </button>
+
+        <div class="progress-container">
+            <input type="range" id="seek-bar" value="0" min="0" step="0.1">
+        </div>
+
+        <div class="time-display">
+            <span id="current-time">0:00</span> / <span id="duration">0:00</span>
+        </div>
+    </div>
+
+    <!-- Seek Feedback Elements -->
+    <div id="seek-feedback-left" class="seek-feedback left">
+        <i class="fa fa-backward"></i>
+        <span style="font-size:0.6em; margin-top:5px;">-10s</span>
+    </div>
+    <div id="seek-feedback-right" class="seek-feedback right">
+        <i class="fa fa-forward"></i>
+        <span style="font-size:0.6em; margin-top:5px;">+10s</span>
+    </div>
+
+    <a-scene loading-screen="dotsColor: white; backgroundColor: black">
         <a-assets>
-            <!-- Sample 360 video from A-Frame CDN -->
             <video id="video360" src="https://cdn.aframe.io/360-video-and-images/antarctica.mp4" loop="true"
                 crossorigin="anonymous" playsinline webkit-playsinline></video>
         </a-assets>
@@ -145,140 +291,247 @@
         <!-- 360 Video Sphere -->
         <a-videosphere src="#video360" rotation="0 -90 0"></a-videosphere>
 
-        <!-- Camera with look controls (mouse drag + gyro) -->
+        <!-- Camera -->
         <a-entity camera look-controls="reverseMouseDrag: true" position="0 0 0">
+            <!-- Simple gaze cursor -->
             <a-entity cursor="fuse: false; rayOrigin: mouse;" position="0 0 -1"
-                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" material="color: black; shader: flat"
-                visible="false">
+                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                material="color: white; shader: flat; opacity: 0.5" visible="false">
             </a-entity>
         </a-entity>
     </a-scene>
 
     <script>
-        const overlay = document.querySelector('#overlay');
-        const video = document.querySelector('#video360');
-        const playBtn = document.querySelector('.play-btn');
-        const fileInput = document.querySelector('#file-upload');
-        const fileNameDisplay = document.querySelector('#file-name');
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video360');
+            const overlay = document.getElementById('overlay');
+            const playBtnLarge = document.querySelector('.play-btn-large');
+            const controls = document.getElementById('video-controls');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const icon = playPauseBtn.querySelector('i');
+            const seekBar = document.getElementById('seek-bar');
+            const currentTimeSpan = document.getElementById('current-time');
+            const durationSpan = document.getElementById('duration');
+            const fileInput = document.getElementById('file-upload');
+            const fileNameDisplay = document.getElementById('file-name');
+            const feedbackLeft = document.getElementById('seek-feedback-left');
+            const feedbackRight = document.getElementById('seek-feedback-right');
 
-        // Prevent overlay click from triggering play immediately if clicking upload
-        // logic handled by specific event listeners below
+            let controlsTimeout;
+            let isDragging = false; // For preventing control hide while seeking
 
-        fileInput.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (file) {
-                const fileURL = URL.createObjectURL(file);
-                video.src = fileURL;
-                fileNameDisplay.textContent = "Selected: " + file.name;
+            // --- Initialization ---
+
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             }
-        });
 
-        playBtn.addEventListener('click', function () {
-            // Hide overlay
-            overlay.classList.add('hidden');
+            // --- File Upload ---
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const fileURL = URL.createObjectURL(file);
+                    video.src = fileURL;
+                    fileNameDisplay.textContent = file.name;
+                    video.load();
+                }
+            });
 
-            // Play video
-            video.play();
-        });
+            // --- large Play Button (Start) ---
+            playBtnLarge.addEventListener('click', () => {
+                overlay.classList.add('hidden');
+                controls.classList.remove('hidden-controls');
+                video.play().catch(e => console.error("Play failed:", e));
+                resetControlsTimer();
+            });
 
-        // Video Seek Logic
-        const SEEK_TIME = 10; // seconds
-        let lastTapTime = 0;
-        let lastTapX = 0;
-        const DOUBLE_TAP_DELAY = 300; // ms
-        const TAP_POSITION_THRESHOLD = 50; // px (max distance between taps)
+            // --- Control Bar Logic ---
 
-        // Feedback Elements
-        const feedbackContainer = document.createElement('div');
-        feedbackContainer.innerHTML = `
-            <div id="seek-feedback-left" class="seek-feedback left">
-                <i class="fa fa-backward"></i>
-                <span>-10s</span>
-            </div>
-            <div id="seek-feedback-right" class="seek-feedback right">
-                <i class="fa fa-forward"></i>
-                <span>+10s</span>
-            </div>
-        `;
-        document.body.appendChild(feedbackContainer);
+            function togglePlay() {
+                if (video.paused) {
+                    video.play();
+                    icon.className = 'fa fa-pause';
+                } else {
+                    video.pause();
+                    icon.className = 'fa fa-play';
+                }
+            }
 
-        const feedbackLeft = document.getElementById('seek-feedback-left');
-        const feedbackRight = document.getElementById('seek-feedback-right');
+            playPauseBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent gesture toggle
+                togglePlay();
+                resetControlsTimer();
+            });
 
-        // Main Interaction Listener
-        // We use 'click' because it works for both mouse and touch reasonably well for this simple case.
-        // A-Frame captures some events, so we listen on the document or a specific container if possible.
-        // listening on window/document ensuring we capture bubble up.
+            video.addEventListener('timeupdate', () => {
+                if (!isDragging) { // Only update if user isn't holding slider
+                    if (!isNaN(video.duration)) {
+                        seekBar.value = (video.currentTime / video.duration) * 100;
+                        seekBar.max = 100;
+                    }
+                    currentTimeSpan.textContent = formatTime(video.currentTime);
+                    if (!isNaN(video.duration)) {
+                        durationSpan.textContent = formatTime(video.duration);
+                    }
+                }
+            });
 
-        window.addEventListener('click', (e) => {
-            // Ignore clicks on buttons/inputs
-            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('label')) return;
+            video.addEventListener('loadedmetadata', () => {
+                durationSpan.textContent = formatTime(video.duration);
+            });
 
-            const currentTime = new Date().getTime();
-            const tapGap = currentTime - lastTapTime;
+            video.addEventListener('ended', () => {
+                icon.className = 'fa fa-play';
+                controls.classList.remove('hidden-controls');
+            });
 
-            // Check double tap timing
-            if (tapGap < DOUBLE_TAP_DELAY && tapGap > 0) {
-                // Check distance (to avoid treating two distant taps as double tap)
-                // (Optional for mouse, useful for touch if user uses two fingers lightly)
-                // For simplicity, we just use X position.
+            seekBar.addEventListener('input', () => {
+                isDragging = true;
+                const time = (seekBar.value / 100) * video.duration;
+                currentTimeSpan.textContent = formatTime(time);
+                resetControlsTimer();
+            });
+
+            seekBar.addEventListener('change', () => {
+                isDragging = false;
+                const time = (seekBar.value / 100) * video.duration;
+                video.currentTime = time;
+                resetControlsTimer();
+            });
+
+            // Prevent clicks on slider from toggling generic tap functions
+            seekBar.addEventListener('mousedown', (e) => e.stopPropagation());
+            seekBar.addEventListener('touchstart', (e) => e.stopPropagation());
+
+            // --- Visibility Toggle Logic ---
+            function showControls() {
+                controls.classList.remove('hidden-controls');
+                resetControlsTimer();
+            }
+
+            function hideControls() {
+                if (!video.paused && !isDragging) {
+                    controls.classList.add('hidden-controls');
+                }
+            }
+
+            function resetControlsTimer() {
+                clearTimeout(controlsTimeout);
+                controls.classList.remove('hidden-controls');
+                controlsTimeout = setTimeout(hideControls, 3000);
+            }
+
+            // --- Touch / Mouse Gestures ---
+
+            let lastTapTime = 0;
+            const DOUBLE_TAP_DELAY = 300;
+            const SEEK_STEP = 10;
+
+            // Using 'click' for simplicity on both desktop/mobile for this specific interaction
+            // However, to distinguish drags (look around) vs taps, we might need more logic by A-Frame
+            // But since controls are 2D overlay, we listen to window events.
+
+            // To separate drag (camera look) from tap (interface), we can check movement distance
+            let startX = 0, startY = 0;
+            let isClick = true;
+
+            document.addEventListener('mousedown', (e) => {
+                startX = e.clientX;
+                startY = e.clientY;
+                isClick = true;
+            });
+            document.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                isClick = true;
+            });
+
+            const checkDrag = (x, y) => {
+                const dist = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+                if (dist > 10) isClick = false; // It's a drag
+            };
+
+            document.addEventListener('mousemove', (e) => {
+                if (isClick) checkDrag(e.clientX, e.clientY);
+            });
+            document.addEventListener('touchmove', (e) => {
+                if (isClick) checkDrag(e.touches[0].clientX, e.touches[0].clientY);
+            });
+
+            const handleTap = (clientX) => {
+                // If it was a drag, ignore
+                if (!isClick) return;
+
+                // Ignore if clicked on controls/overlay explicitly
+                if (overlay.offsetParent !== null) return; // Overlay is visible
+
+                const now = new Date().getTime();
+                const tapGap = now - lastTapTime;
 
                 const width = window.innerWidth;
-                const x = e.clientX;
 
-                if (x < width * 0.3) {
-                    // Left 30% - Rewind
-                    seekVideo(-SEEK_TIME);
-                    showFeedback(feedbackLeft);
-                } else if (x > width * 0.7) {
-                    // Right 30% - Forward
-                    seekVideo(SEEK_TIME);
-                    showFeedback(feedbackRight);
+                if (tapGap < DOUBLE_TAP_DELAY && tapGap > 0) {
+                    // Double Tap
+                    if (clientX < width * 0.35) {
+                        // Left
+                        video.currentTime -= SEEK_STEP;
+                        triggerFeedback(feedbackLeft);
+                    } else if (clientX > width * 0.65) {
+                        // Right
+                        video.currentTime += SEEK_STEP;
+                        triggerFeedback(feedbackRight);
+                    } else {
+                        // Center Double Tap - Optional: Toggle Play?
+                        togglePlay();
+                    }
+                    lastTapTime = 0; // Reset
+                } else {
+                    // Single Tap - Wait to see if double tap happens
+                    // But for responsiveness, we usually toggle controls immediately
+                    // If a double tap follows, the seek overrides the toggle or we accept the flicker.
+                    // To avoid flicker, we can delay, but that feels laggy.
+                    // Let's just toggle controls on single tap.
+
+                    if (controls.classList.contains('hidden-controls')) {
+                        showControls();
+                    } else {
+                        // Only hide if tapping center area (avoid accidental hide when trying to double tap sides)
+                        if (clientX > width * 0.35 && clientX < width * 0.65) {
+                            hideControls();
+                        } else {
+                            // If tapping sides, keep controls up just in case
+                            resetControlsTimer();
+                        }
+                    }
+                    lastTapTime = now;
                 }
+            };
 
-                // Reset to prevent triple-tap triggering another immediate double
-                lastTapTime = 0;
-            } else {
-                lastTapTime = currentTime;
+            document.addEventListener('mouseup', (e) => {
+                if (e.target.closest('#video-controls') || e.target.closest('.play-btn-large')) return;
+                handleTap(e.clientX);
+            });
+
+            // For touch, we need to handle touchend carefully
+            // we rely on click usually for hybrid, but touchend gives better "tap" feel
+            /*
+            document.addEventListener('touchend', (e) => {
+                // A-Frame sometimes consumes touch events or click events depending on configuration.
+                // We rely on standard click bubbling if possible, or use touchend if click is blocked.
+                // Let's stick to mouseup/click for consistency unless testing proves otherwise.
+            });
+            */
+
+            function triggerFeedback(el) {
+                el.classList.remove('animate-feedback');
+                void el.offsetWidth; // trigger reflow
+                el.classList.add('animate-feedback');
             }
-        });
 
-        function seekVideo(timeChange) {
-            if (!video) return;
-            video.currentTime += timeChange;
-        }
-
-        function showFeedback(element) {
-            // Reset animation
-            element.style.display = 'flex';
-            element.classList.remove('animate-feedback');
-
-            // Trigger reflow
-            void element.offsetWidth;
-
-            element.classList.add('animate-feedback');
-
-            // Hide after animation (approx match CSS transition)
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 600);
-        }
-
-        // Handle simple keyboard controls
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                if (video.paused) video.play();
-                else video.pause();
-            } else if (e.code === 'ArrowRight') {
-                seekVideo(SEEK_TIME);
-                showFeedback(feedbackRight);
-            } else if (e.code === 'ArrowLeft') {
-                seekVideo(-SEEK_TIME);
-                showFeedback(feedbackLeft);
-            }
         });
     </script>
-
 </body>
 
 </html>
