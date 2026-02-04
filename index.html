@@ -353,10 +353,8 @@
             function togglePlay() {
                 if (video.paused) {
                     video.play();
-                    icon.className = 'fa fa-pause';
                 } else {
                     video.pause();
-                    icon.className = 'fa fa-play';
                 }
             }
 
@@ -364,6 +362,15 @@
                 e.stopPropagation(); // Prevent gesture toggle
                 togglePlay();
                 resetControlsTimer();
+            });
+
+            // Update UI on video state change
+            video.addEventListener('play', () => {
+                icon.className = 'fa fa-pause';
+            });
+
+            video.addEventListener('pause', () => {
+                icon.className = 'fa fa-play';
             });
 
             video.addEventListener('timeupdate', () => {
@@ -438,35 +445,37 @@
             let startX = 0, startY = 0;
             let isClick = true;
 
-            document.addEventListener('mousedown', (e) => {
+            // Capture phase listeners to ensure we catch events before A-Frame
+            window.addEventListener('mousedown', (e) => {
                 startX = e.clientX;
                 startY = e.clientY;
                 isClick = true;
-            });
-            document.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
+            }, true);
+            window.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
                 isClick = true;
-            });
+            }, true);
 
             const checkDrag = (x, y) => {
                 const dist = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
-                if (dist > 10) isClick = false; // It's a drag
+                if (dist > 20) isClick = false; // It's a drag
             };
 
-            document.addEventListener('mousemove', (e) => {
+            window.addEventListener('mousemove', (e) => {
                 if (isClick) checkDrag(e.clientX, e.clientY);
-            });
-            document.addEventListener('touchmove', (e) => {
-                if (isClick) checkDrag(e.touches[0].clientX, e.touches[0].clientY);
-            });
+            }, true);
+            window.addEventListener('touchmove', (e) => {
+                if (isClick && e.touches.length > 0) checkDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }, true);
 
             const handleTap = (clientX) => {
                 // If it was a drag, ignore
                 if (!isClick) return;
 
                 // Ignore if clicked on controls/overlay explicitly
-                if (overlay.offsetParent !== null) return; // Overlay is visible
+                if (!overlay.classList.contains('hidden')) return; // Overlay is visible
 
                 const now = new Date().getTime();
                 const tapGap = now - lastTapTime;
@@ -510,10 +519,26 @@
                 }
             };
 
-            document.addEventListener('mouseup', (e) => {
+            // Handle Touch End (Mobile)
+            let lastTouchEnd = 0;
+            window.addEventListener('touchend', (e) => {
+                lastTouchEnd = Date.now();
+                if (!isClick) return;
+
+                // If touching controls, let it pass
                 if (e.target.closest('#video-controls') || e.target.closest('.play-btn-large')) return;
+
+                handleTap(e.changedTouches[0].clientX);
+            }, true);
+
+            // Handle Mouse Up (Desktop)
+            window.addEventListener('mouseup', (e) => {
+                if (Date.now() - lastTouchEnd < 500) return; // Ignore ghost clicks
+
+                if (e.target.closest('#video-controls') || e.target.closest('.play-btn-large')) return;
+
                 handleTap(e.clientX);
-            });
+            }, true);
 
             // For touch, we need to handle touchend carefully
             // we rely on click usually for hybrid, but touchend gives better "tap" feel
