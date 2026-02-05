@@ -418,20 +418,23 @@
                 </a-entity>
 
                 <!-- VR Controls HUD (Vertical Layout - Moved Up/Centered) -->
-                <a-entity id="vr-controls" position="0 -0.2 -2" visible="false">
-                    <!-- Background Panel (0.6 x 1.0) -->
-                    <a-plane color="#000" opacity="0.7" width="0.6" height="1.0" position="0 0 0"></a-plane>
+                <!-- MOVED TO RIG -->
+            </a-entity>
 
-                    <!-- Seek Forward (Top) -->
-                    <a-circle id="vr-seek-fwd" color="#FFF" radius="0.15" position="0 0.25 0.01" class="clickable">
-                        <a-text value="+15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
-                    </a-circle>
+            <!-- VR Controls HUD (Attached to Rig - Body Locked) -->
+            <a-entity id="vr-controls" position="0 1.3 -2.5" visible="false" rotation="0 0 0">
+                <!-- Background Panel (0.6 x 1.0) -->
+                <a-plane color="#000" opacity="0.7" width="0.6" height="1.0" position="0 0 0"></a-plane>
 
-                    <!-- Seek Back (Bottom) -->
-                    <a-circle id="vr-seek-back" color="#FFF" radius="0.15" position="0 -0.25 0.01" class="clickable">
-                        <a-text value="-15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
-                    </a-circle>
-                </a-entity>
+                <!-- Seek Forward (Top) -->
+                <a-circle id="vr-seek-fwd" color="#FFF" radius="0.15" position="0 0.25 0.01" class="clickable">
+                    <a-text value="+15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
+                </a-circle>
+
+                <!-- Seek Back (Bottom) -->
+                <a-circle id="vr-seek-back" color="#FFF" radius="0.15" position="0 -0.25 0.01" class="clickable">
+                    <a-text value="-15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
+                </a-circle>
             </a-entity>
 
             <!-- Controllers for Joystick Input -->
