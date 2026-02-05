@@ -420,23 +420,23 @@
                 <!-- VR Controls HUD (Attached to head so it stays in view) -->
                 <a-entity id="vr-controls" position="0 -0.5 -1.5" visible="false">
                     <!-- Background Panel -->
-                    <a-plane color="#000" opacity="0.7" width="1.5" height="0.4" position="0 0 0"></a-plane>
+                    <a-plane color="#000" opacity="0.7" width="1.8" height="0.5" position="0 0 0"></a-plane>
 
                     <!-- Seek Back -->
-                    <a-circle id="vr-seek-back" color="#FFF" radius="0.08" position="-0.4 0 0.01" class="clickable">
-                        <a-text value="-10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
+                    <a-circle id="vr-seek-back" color="#FFF" radius="0.15" position="-0.5 0 0.01" class="clickable">
+                        <a-text value="-15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
                     </a-circle>
 
                     <!-- Play/Pause -->
-                    <a-plane id="vr-play-btn" color="#e91e63" width="0.4" height="0.15" position="0 0 0.01"
+                    <a-plane id="vr-play-btn" color="#e91e63" width="0.5" height="0.25" position="0 0 0.01"
                         class="clickable">
                         <a-text id="vr-play-text" value="PLAY" align="center" color="#FFF" position="0 0 0.01"
-                            width="3"></a-text>
+                            width="4"></a-text>
                     </a-plane>
 
                     <!-- Seek Forward -->
-                    <a-circle id="vr-seek-fwd" color="#FFF" radius="0.08" position="0.4 0 0.01" class="clickable">
-                        <a-text value="+10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
+                    <a-circle id="vr-seek-fwd" color="#FFF" radius="0.15" position="0.5 0 0.01" class="clickable">
+                        <a-text value="+15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
                     </a-circle>
                 </a-entity>
             </a-entity>
@@ -1252,7 +1252,7 @@
             if (vrSeekBack) {
                 vrSeekBack.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    video.currentTime -= 10;
+                    video.currentTime -= 15;
                     resetVRControlsTimer();
                 });
                 vrSeekBack.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
@@ -1262,7 +1262,7 @@
             if (vrSeekFwd) {
                 vrSeekFwd.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    video.currentTime += 10;
+                    video.currentTime += 15;
                     resetVRControlsTimer();
                 });
                 vrSeekFwd.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
