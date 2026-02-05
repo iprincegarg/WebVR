@@ -920,15 +920,75 @@
                 if (cursor) cursor.setAttribute('visible', 'false');
             });
 
-            // Toggle controls on videosphere click
+            // Toggle Play/Pause on videosphere click (Gaming Style)
             videosphere.addEventListener('click', () => {
-                const isVisible = vrControls.getAttribute('visible') === 'true' || vrControls.getAttribute('visible') === true;
-                if (isVisible) {
-                    hideVRControls();
-                } else {
+                // If controls are hidden, show them.
+                // If user clicks, usually they want to pause or play.
+                togglePlay();
+                updateVRPlayButton();
+
+                if (video.paused) {
                     showVRControls();
+                    clearTimeout(vrControlsTimeout); // Sticky when paused
+                } else {
+                    showVRControls(); // Show briefly then hide
+                    resetVRControlsTimer();
                 }
             });
+
+            // --- Gaming Input Controls (Keyboard & Mouse) ---
+
+            // Keyboard Shortcuts
+            window.addEventListener('keydown', (e) => {
+                // Only active if overlay is hidden (experience started)
+                if (!overlay.classList.contains('hidden')) return;
+
+                switch (e.code) {
+                    case 'Space':
+                        e.preventDefault(); // Prevent scroll
+                        togglePlay();
+                        updateVRPlayButton();
+                        if (video.paused) {
+                            showVRControls();
+                            clearTimeout(vrControlsTimeout);
+                        } else {
+                            showVRControls();
+                            resetVRControlsTimer();
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        video.currentTime -= 10;
+                        showVRControls();
+                        resetVRControlsTimer();
+                        triggerFeedback(document.getElementById('seek-feedback-left'));
+                        break;
+                    case 'ArrowRight':
+                        video.currentTime += 10;
+                        showVRControls();
+                        resetVRControlsTimer();
+                        triggerFeedback(document.getElementById('seek-feedback-right'));
+                        break;
+                }
+            });
+
+            // Mouse Wheel Seek
+            window.addEventListener('wheel', (e) => {
+                if (!overlay.classList.contains('hidden')) return;
+
+                // A-Frame uses wheel to zoom, so we might conflict.
+                // However, for this video player, seeking is more useful.
+                // We'll use a threshold to prevent accidental small scrolls.
+                if (Math.abs(e.deltaY) > 10) {
+                    // Normalize direction
+                    const direction = Math.sign(e.deltaY);
+                    // Wheel Down (positive) -> Seek Fwd, Wheel Up (negative) -> Seek Back
+                    // Or standard gaming: Wheel Up -> Next/Fwd? 
+                    // Let's use: Wheel Down -> +5s, Wheel Up -> -5s
+                    video.currentTime += (direction * 5);
+                    showVRControls();
+                    resetVRControlsTimer();
+                }
+            }, { passive: true });
 
             // VR Button Interactions
             if (vrPlayBtn) {
