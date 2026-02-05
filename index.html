@@ -444,11 +444,13 @@
             <!-- Controllers for Joystick Input -->
             <!-- Left Controller (Media Controls) -->
             <a-entity oculus-touch-controls="hand: left" laser-controls="hand: left"
-                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-media-control="hand: left">
+                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-media-control="hand: left"
+                button-media-control="hand: left">
             </a-entity>
             <!-- Right Controller -->
             <a-entity oculus-touch-controls="hand: right" laser-controls="hand: right"
-                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-rotation="hand: right">
+                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-rotation="hand: right"
+                button-media-control="hand: right">
             </a-entity>
         </a-entity>
     </a-scene>
@@ -602,6 +604,83 @@
             }
         });
 
+
+        // Register Button Media Control Component
+        AFRAME.registerComponent('button-media-control', {
+            schema: {
+                hand: { type: 'string', default: 'right' }
+            },
+
+            init: function () {
+                this.video = document.getElementById('video360');
+                this.feedbackLeft = document.getElementById('seek-feedback-left');
+                this.feedbackRight = document.getElementById('seek-feedback-right');
+
+                // Volume Up (A)
+                this.el.addEventListener('abuttondown', () => {
+                    this.changeVolume(0.1);
+                });
+
+                // Volume Down (B)
+                this.el.addEventListener('bbuttondown', () => {
+                    this.changeVolume(-0.1);
+                });
+
+                // Forward 15s (X)
+                this.el.addEventListener('xbuttondown', () => {
+                    this.seek(15, this.feedbackRight);
+                });
+
+                // Rewind 15s (Y)
+                this.el.addEventListener('ybuttondown', () => {
+                    this.seek(-15, this.feedbackLeft);
+                });
+
+                // Play/Pause (Trigger)
+                this.el.addEventListener('triggerdown', () => {
+                    this.togglePlay();
+                });
+            },
+
+            seek: function (seconds, feedbackEl) {
+                if (!this.video) return;
+                this.video.currentTime = Math.max(0, Math.min(this.video.duration, this.video.currentTime + seconds));
+                if (feedbackEl) {
+                    // Update text to match 15s if needed, or just show icon
+                    // Assuming existing feedback elements are generic enough or we modify them
+                    const text = feedbackEl.querySelector('span');
+                    if (text) text.textContent = seconds > 0 ? "+15s" : "-15s";
+
+                    feedbackEl.classList.remove('animate-feedback');
+                    void feedbackEl.offsetWidth;
+                    feedbackEl.classList.add('animate-feedback');
+                }
+                if (typeof showVRControls === 'function') showVRControls();
+            },
+
+            changeVolume: function (delta) {
+                if (!this.video) return;
+                const newVol = Math.max(0, Math.min(1, this.video.volume + delta));
+                this.video.volume = newVol;
+
+                // Reuse volume feedback from joystick component if possible, or duplicate logic
+                const vrPlayText = document.getElementById('vr-play-text');
+                if (vrPlayText) {
+                    vrPlayText.setAttribute('value', `VOL: ${Math.round(newVol * 100)}%`);
+                    setTimeout(() => {
+                        if (this.video.paused) vrPlayText.setAttribute('value', 'PLAY');
+                        else vrPlayText.setAttribute('value', 'PAUSE');
+                    }, 1000);
+                }
+            },
+
+            togglePlay: function () {
+                if (!this.video) return;
+                if (this.video.paused) this.video.play();
+                else this.video.pause();
+                // UI updates handled by video events
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             const video = document.getElementById('video360');
