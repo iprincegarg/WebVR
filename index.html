@@ -417,9 +417,9 @@
                     material="color: white; shader: flat; opacity: 0.5" visible="false">
                 </a-entity>
 
-                <!-- VR Controls HUD (Vertical Layout) -->
-                <a-entity id="vr-controls" position="0 -0.5 -1.5" visible="false">
-                    <!-- Background Panel (Taller, Narrower) -->
+                <!-- VR Controls HUD (Vertical Layout - Moved Up/Centered) -->
+                <a-entity id="vr-controls" position="0 -0.2 -2" visible="false">
+                    <!-- Background Panel (0.6 x 1.0) -->
                     <a-plane color="#000" opacity="0.7" width="0.6" height="1.0" position="0 0 0"></a-plane>
 
                     <!-- Seek Forward (Top) -->
@@ -1233,8 +1233,15 @@
                     video.currentTime -= 15;
                     resetVRControlsTimer();
                 });
-                vrSeekBack.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
-                vrSeekBack.addEventListener('mouseleave', () => resetVRControlsTimer());
+                // Add Hover Scale Feedback
+                vrSeekBack.addEventListener('mouseenter', () => {
+                    vrSeekBack.setAttribute('scale', '1.2 1.2 1.2');
+                    clearTimeout(vrControlsTimeout);
+                });
+                vrSeekBack.addEventListener('mouseleave', () => {
+                    vrSeekBack.setAttribute('scale', '1 1 1');
+                    resetVRControlsTimer();
+                });
             }
 
             if (vrSeekFwd) {
@@ -1243,8 +1250,15 @@
                     video.currentTime += 15;
                     resetVRControlsTimer();
                 });
-                vrSeekFwd.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
-                vrSeekFwd.addEventListener('mouseleave', () => resetVRControlsTimer());
+                // Add Hover Scale Feedback
+                vrSeekFwd.addEventListener('mouseenter', () => {
+                    vrSeekFwd.setAttribute('scale', '1.2 1.2 1.2');
+                    clearTimeout(vrControlsTimeout);
+                });
+                vrSeekFwd.addEventListener('mouseleave', () => {
+                    vrSeekFwd.setAttribute('scale', '1 1 1');
+                    resetVRControlsTimer();
+                });
             }
 
             // Sync VR button state on normal play/pause
