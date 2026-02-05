@@ -426,15 +426,24 @@
                 <!-- Background Panel (0.6 x 1.0) -->
                 <a-plane color="#000" opacity="0.7" width="0.6" height="1.0" position="0 0 0"></a-plane>
 
-                <!-- Seek Forward (Top) -->
-                <a-circle id="vr-seek-fwd" color="#FFF" radius="0.15" position="0 0.25 0.01" class="clickable">
-                    <a-text value="+15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
-                </a-circle>
+                <!-- Timeline Bar -->
+                <a-entity id="vr-timeline" position="0 -0.25 0.01">
+                    <!-- Background Track (Clickable) -->
+                    <a-box id="vr-timeline-bg" color="#555" width="0.5" height="0.05" depth="0.01"
+                        class="clickable"></a-box>
 
-                <!-- Seek Back (Bottom) -->
-                <a-circle id="vr-seek-back" color="#FFF" radius="0.15" position="0 -0.25 0.01" class="clickable">
-                    <a-text value="-15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
-                </a-circle>
+                    <!-- Progress Bar (Dynamic) -->
+                    <!-- Initial State: Scale 0, Position left-aligned (-0.25) -->
+                    <a-box id="vr-timeline-progress" color="#e91e63" width="0.5" height="0.05" depth="0.011"
+                        position="-0.25 0 0.001" scale="0 1 1"></a-box>
+
+                    <!-- Hover Tooltip -->
+                    <a-entity id="vr-timeline-tooltip" visible="false" position="0 0.1 0">
+                        <a-plane color="#000" opacity="0.8" width="0.15" height="0.05"></a-plane>
+                        <a-text id="vr-tooltip-text" value="0:00" align="center" color="#FFF" width="2"
+                            position="0 0 0.01"></a-text>
+                    </a-entity>
+                </a-entity>
             </a-entity>
 
             <!-- Controllers for Joystick Input -->
@@ -1227,42 +1236,98 @@
                 }
             }, { passive: true });
 
-            // VR Button Interactions
-            // Removed vrPlayBtn listeners
+            // VR Button Interactions (Legacy Removed)
 
-            if (vrSeekBack) {
-                vrSeekBack.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    video.currentTime -= 15;
+            // --- VR Timeline Logic ---
+            const vrTimelineBg = document.getElementById('vr-timeline-bg');
+            const vrTimelineProgress = document.getElementById('vr-timeline-progress');
+            const vrTimelineTooltip = document.getElementById('vr-timeline-tooltip');
+            const vrTooltipText = document.getElementById('vr-tooltip-text');
+            const vrTimeline = document.getElementById('vr-timeline');
+
+            const TIMELINE_WIDTH = 0.5; // Matches geometry width
+
+            if (vrTimelineBg) {
+                // Seek Interaction (Click)
+                vrTimelineBg.addEventListener('click', (e) => {
+                    // e.detail.intersection.point is the world coordinate
+                    // We need local coordinate relative to the timeline entity
+                    // The timeline entity is centered at 0. width 0.5. range [-0.25, 0.25]
+
+                    const point = e.detail.intersection.point;
+                    const object3D = vrTimelineBg.object3D;
+                    // World to Local
+                    const localPoint = object3D.worldToLocal(point.clone());
+
+                    // localPoint.x should be between -0.25 and 0.25
+                    const ratio = (localPoint.x + (TIMELINE_WIDTH / 2)) / TIMELINE_WIDTH;
+                    const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+                    if (video.duration) {
+                        video.currentTime = clampedRatio * video.duration;
+                        resetVRControlsTimer();
+                    }
+                });
+
+                // Hover Interaction (Tooltip)
+                vrTimelineBg.addEventListener('mouseenter', () => {
+                    vrTimelineTooltip.setAttribute('visible', 'true');
+                    clearTimeout(vrControlsTimeout); // Keep controls visible while interacting
+                });
+
+                vrTimelineBg.addEventListener('mouseleave', () => {
+                    vrTimelineTooltip.setAttribute('visible', 'false');
                     resetVRControlsTimer();
                 });
-                // Add Hover Scale Feedback
-                vrSeekBack.addEventListener('mouseenter', () => {
-                    vrSeekBack.setAttribute('scale', '1.2 1.2 1.2');
-                    clearTimeout(vrControlsTimeout);
-                });
-                vrSeekBack.addEventListener('mouseleave', () => {
-                    vrSeekBack.setAttribute('scale', '1 1 1');
-                    resetVRControlsTimer();
-                });
+
+                // We need to update tooltip position continuously while hovering
+                // A-Frame doesn't emit 'mousemove' on entities, but we can poll raycaster intersection
+                // Or use a tick handler. simpler is to rely on raycaster events if possible, but 'raycaster-intersected' 
+                // gives the intersection data once or on change. 
+                // Let's use a tick-based approach in a component or a simple interval since specific component is better.
+                // But for simplicity in this script, we can add a listener to the raycaster's intersection data if we can access it.
+                // Actually, the simplest way for "move" is to use the cursor's 'fusing' state or just add a component to the timeline bg.
             }
 
-            if (vrSeekFwd) {
-                vrSeekFwd.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    video.currentTime += 15;
-                    resetVRControlsTimer();
-                });
-                // Add Hover Scale Feedback
-                vrSeekFwd.addEventListener('mouseenter', () => {
-                    vrSeekFwd.setAttribute('scale', '1.2 1.2 1.2');
-                    clearTimeout(vrControlsTimeout);
-                });
-                vrSeekFwd.addEventListener('mouseleave', () => {
-                    vrSeekFwd.setAttribute('scale', '1 1 1');
-                    resetVRControlsTimer();
-                });
-            }
+            // Register a component for the timeline to handle hover updates efficiently
+            AFRAME.registerComponent('vr-timeline-hover', {
+                init: function () {
+                    this.el.addEventListener('raycaster-intersected', evt => {
+                        this.raycasterEl = evt.detail.el;
+                    });
+                    this.el.addEventListener('raycaster-intersected-cleared', evt => {
+                        this.raycasterEl = null;
+                    });
+                },
+                tick: function () {
+                    if (!this.raycasterEl) return;
+
+                    const intersection = this.raycasterEl.components.raycaster.getIntersection(this.el);
+                    if (!intersection) return;
+
+                    // Update Tooltip
+                    const point = intersection.point;
+                    const object3D = this.el.object3D;
+                    const localPoint = object3D.worldToLocal(point.clone());
+
+                    const ratio = (localPoint.x + (TIMELINE_WIDTH / 2)) / TIMELINE_WIDTH;
+                    const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+                    if (video.duration) {
+                        const time = clampedRatio * video.duration;
+                        const mins = Math.floor(time / 60);
+                        const secs = Math.floor(time % 60);
+                        const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                        vrTooltipText.setAttribute('value', timeStr);
+                    }
+
+                    // Move tooltip to hover X
+                    vrTimelineTooltip.object3D.position.x = localPoint.x;
+                }
+            });
+
+            // Add the component to the background
+            if (vrTimelineBg) vrTimelineBg.setAttribute('vr-timeline-hover', '');
 
             // Sync VR button state on normal play/pause
             video.addEventListener('play', () => {
@@ -1275,6 +1340,20 @@
                 showVRControls();
             });
 
+            // Update Progress Bar
+            video.addEventListener('timeupdate', () => {
+                if (video.duration && vrTimelineProgress) {
+                    const ratio = video.currentTime / video.duration;
+                    // Update scale x
+                    vrTimelineProgress.object3D.scale.x = ratio;
+                    // Update position x to keep left anchor
+                    // Width is 0.5. At scale 1, pos is 0. 
+                    // At scale s, width is 0.5*s.
+                    // We want left edge at -0.25.
+                    // Center should be -0.25 + (0.5*s)/2
+                    vrTimelineProgress.object3D.position.x = -0.25 + (0.25 * ratio);
+                }
+            });
         });
     </script>
 </body>
