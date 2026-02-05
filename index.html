@@ -407,40 +407,202 @@
         <!-- 360 Video Sphere -->
         <a-videosphere src="#video360" rotation="0 -90 0" class="clickable"></a-videosphere>
 
-        <!-- Camera -->
-        <a-entity camera look-controls="reverseMouseDrag: true" position="0 0 0">
-            <!-- Simple gaze cursor -->
-            <a-entity cursor="fuse: false; rayOrigin: mouse;" position="0 0 -1"
-                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
-                material="color: white; shader: flat; opacity: 0.5" visible="false">
+        <!-- Camera Rig (allows rotation of the user) -->
+        <a-entity id="camera-rig" rotation="0 0 0">
+            <!-- Head / Camera -->
+            <a-entity id="head" camera look-controls="reverseMouseDrag: true" position="0 1.6 0">
+                <!-- Simple gaze cursor -->
+                <a-entity cursor="fuse: false; rayOrigin: mouse;" position="0 0 -1"
+                    geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                    material="color: white; shader: flat; opacity: 0.5" visible="false">
+                </a-entity>
+
+                <!-- VR Controls HUD (Attached to head so it stays in view) -->
+                <a-entity id="vr-controls" position="0 -0.5 -1.5" visible="false">
+                    <!-- Background Panel -->
+                    <a-plane color="#000" opacity="0.7" width="1.5" height="0.4" position="0 0 0"></a-plane>
+
+                    <!-- Seek Back -->
+                    <a-circle id="vr-seek-back" color="#FFF" radius="0.08" position="-0.4 0 0.01" class="clickable">
+                        <a-text value="-10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
+                    </a-circle>
+
+                    <!-- Play/Pause -->
+                    <a-plane id="vr-play-btn" color="#e91e63" width="0.4" height="0.15" position="0 0 0.01"
+                        class="clickable">
+                        <a-text id="vr-play-text" value="PLAY" align="center" color="#FFF" position="0 0 0.01"
+                            width="3"></a-text>
+                    </a-plane>
+
+                    <!-- Seek Forward -->
+                    <a-circle id="vr-seek-fwd" color="#FFF" radius="0.08" position="0.4 0 0.01" class="clickable">
+                        <a-text value="+10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
+                    </a-circle>
+                </a-entity>
             </a-entity>
 
-            <!-- VR Controls HUD (Hidden by default, shown in VR) -->
-            <a-entity id="vr-controls" position="0 -0.5 -1.5" visible="false">
-                <!-- Background Panel -->
-                <a-plane color="#000" opacity="0.7" width="1.5" height="0.4" position="0 0 0"></a-plane>
-
-                <!-- Seek Back -->
-                <a-circle id="vr-seek-back" color="#FFF" radius="0.08" position="-0.4 0 0.01" class="clickable">
-                    <a-text value="-10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
-                </a-circle>
-
-                <!-- Play/Pause -->
-                <a-plane id="vr-play-btn" color="#e91e63" width="0.4" height="0.15" position="0 0 0.01"
-                    class="clickable">
-                    <a-text id="vr-play-text" value="PLAY" align="center" color="#FFF" position="0 0 0.01"
-                        width="3"></a-text>
-                </a-plane>
-
-                <!-- Seek Forward -->
-                <a-circle id="vr-seek-fwd" color="#FFF" radius="0.08" position="0.4 0 0.01" class="clickable">
-                    <a-text value="+10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
-                </a-circle>
+            <!-- Controllers for Joystick Input -->
+            <!-- Left Controller (Media Controls) -->
+            <a-entity oculus-touch-controls="hand: left" laser-controls="hand: left"
+                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-media-control="hand: left">
+            </a-entity>
+            <!-- Right Controller -->
+            <a-entity oculus-touch-controls="hand: right" laser-controls="hand: right"
+                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-rotation="hand: right">
             </a-entity>
         </a-entity>
     </a-scene>
 
     <script>
+        // Register Joystick Rotation Component
+        AFRAME.registerComponent('joystick-rotation', {
+            schema: {
+                hand: { type: 'string', default: 'right' },
+                sensitivity: { type: 'number', default: 1.5 }
+            },
+
+            init: function () {
+                this.axis = [0, 0];
+                this.rig = document.getElementById('camera-rig');
+
+                // Listen for axis move events
+                this.el.addEventListener('axismove', (evt) => {
+                    // evt.detail.axis contains [x, y] or [x, y, z, w]
+                    // For Oculus Touch: axis[2] is X (thumbstick), axis[3] is Y.
+                    // But newer A-Frame mappings might standardize it to 0 and 1 or 2 and 3.
+                    // We verify which indices change.
+
+                    if (evt.detail.axis.length >= 2) {
+                        // Usually 2 and 3 for thumbstick on Touch, but check 0/1 fallback
+                        const x = evt.detail.axis.length > 2 ? evt.detail.axis[2] : evt.detail.axis[0];
+                        const y = evt.detail.axis.length > 2 ? evt.detail.axis[3] : evt.detail.axis[1];
+                        this.axis = [x, y];
+                    }
+                });
+            },
+
+            tick: function (time, timeDelta) {
+                if (!this.rig) return;
+
+                // Deadzone
+                const deadzone = 0.1;
+
+                // Yaw (Left/Right) - Rotate around Y axis
+                if (Math.abs(this.axis[0]) > deadzone) {
+                    const rotation = this.rig.getAttribute('rotation');
+                    // Invert X because sticking left should rotate camera left (which means world moves right? No, rig rotates left)
+                    // If we rotate rig +Y (left), the camera looks left.
+                    const delta = -this.axis[0] * this.data.sensitivity * (timeDelta / 10);
+                    rotation.y += delta;
+                    this.rig.setAttribute('rotation', rotation);
+                }
+
+                // Pitch (Up/Down) - Rotate around X axis (Optional, can cause motion sickness)
+                // Uncomment to enable pitch
+                /*
+                if (Math.abs(this.axis[1]) > deadzone) {
+                   const rotation = this.rig.getAttribute('rotation');
+                   rotation.x -= this.axis[1] * this.data.sensitivity * (timeDelta / 10);
+                   this.rig.setAttribute('rotation', rotation);
+                }
+                */
+            }
+        });
+
+        // Register Joystick Media Control Component
+        AFRAME.registerComponent('joystick-media-control', {
+            schema: {
+                hand: { type: 'string', default: 'left' }
+            },
+
+            init: function () {
+                this.axis = [0, 0];
+                this.lastExecuteTime = 0;
+                this.EXECUTE_DELAY = 400; // ms between repeated actions
+
+                // Elements
+                this.video = document.getElementById('video360');
+                this.feedbackLeft = document.getElementById('seek-feedback-left');
+                this.feedbackRight = document.getElementById('seek-feedback-right');
+
+                // Listen for axis move
+                this.el.addEventListener('axismove', (evt) => {
+                    if (evt.detail.axis.length >= 2) {
+                        const x = evt.detail.axis.length > 2 ? evt.detail.axis[2] : evt.detail.axis[0];
+                        const y = evt.detail.axis.length > 2 ? evt.detail.axis[3] : evt.detail.axis[1];
+                        this.axis = [x, y];
+                    }
+                });
+            },
+
+            tick: function (time, timeDelta) {
+                if (!this.video) return;
+
+                const deadzone = 0.5; // High deadzone for distinct clicks
+                const now = Date.now();
+
+                if (now - this.lastExecuteTime < this.EXECUTE_DELAY) return;
+
+                // Seek (X-Axis)
+                if (Math.abs(this.axis[0]) > deadzone) {
+                    if (this.axis[0] < -deadzone) {
+                        // Left -> Rewind
+                        this.video.currentTime = Math.max(0, this.video.currentTime - 10);
+                        this.triggerFeedback(this.feedbackLeft);
+                    } else if (this.axis[0] > deadzone) {
+                        // Right -> Forward
+                        this.video.currentTime = Math.min(this.video.duration, this.video.currentTime + 10);
+                        this.triggerFeedback(this.feedbackRight);
+                    }
+                    this.lastExecuteTime = now;
+                    // Reset VR controls timer to keep HUD visible
+                    if (typeof showVRControls === 'function') showVRControls();
+                }
+
+                // Volume (Y-Axis)
+                if (Math.abs(this.axis[1]) > deadzone) {
+                    // Note: axis[1] usually: -1 is Up (Top), 1 is Down (Bottom) for Joysticks
+                    // Let's verify standard Gamepad API: Up is -1.
+
+                    if (this.axis[1] < -deadzone) {
+                        // Up -> Volume Up
+                        this.video.volume = Math.min(1, this.video.volume + 0.1);
+                        this.showVolumeFeedback(this.video.volume);
+                    } else if (this.axis[1] > deadzone) {
+                        // Down -> Volume Down
+                        this.video.volume = Math.max(0, this.video.volume - 0.1);
+                        this.showVolumeFeedback(this.video.volume);
+                    }
+                    this.lastExecuteTime = now;
+                }
+            },
+
+            triggerFeedback: function (el) {
+                if (el) {
+                    el.classList.remove('animate-feedback');
+                    void el.offsetWidth;
+                    el.classList.add('animate-feedback');
+                }
+            },
+
+            showVolumeFeedback: function (vol) {
+                // Simple toast or log for now, as we don't have a volume UI element in VR yet
+                // But we can update the console or a temp status if we want.
+                // Ideally we should add a text entity to the HUD.
+                const vrPlayText = document.getElementById('vr-play-text');
+                if (vrPlayText) {
+                    const originalText = vrPlayText.getAttribute('value');
+                    vrPlayText.setAttribute('value', `VOL: ${Math.round(vol * 100)}%`);
+                    setTimeout(() => {
+                        // Restore Play/Pause text
+                        if (this.video.paused) vrPlayText.setAttribute('value', 'PLAY');
+                        else vrPlayText.setAttribute('value', 'PAUSE');
+                    }, 1000);
+                }
+            }
+        });
+
+
         document.addEventListener('DOMContentLoaded', () => {
             const video = document.getElementById('video360');
             const overlay = document.getElementById('overlay');
