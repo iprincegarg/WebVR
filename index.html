@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>WebVR Video Player</title>
+    <title>WebVR Local Video Player</title>
     <meta name="description" content="WebVR 360 Video Player">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -69,6 +69,10 @@
         .upload-container {
             margin-bottom: 40px;
             text-align: center;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         input[type="file"] {
@@ -91,6 +95,81 @@
             background: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.5);
         }
+
+        /* Playlist Styles */
+        #playlist-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            max-height: 70%;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 950;
+            overflow-y: auto;
+            display: none;
+            /* Hidden by default */
+            color: white;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #playlist-container.visible {
+            display: block;
+        }
+
+        #playlist-header {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .playlist-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .playlist-item.active {
+            background: rgba(233, 30, 99, 0.6);
+            font-weight: bold;
+        }
+
+        #playlist-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 900;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+            /* Hidden strictly until content ready */
+        }
+
+        #playlist-toggle:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
 
         /* Video Control Bar */
         #video-controls {
@@ -246,11 +325,17 @@
 
         <div class="upload-container">
             <label for="file-upload" class="custom-file-upload">
-                <i class="fa fa-folder-open"></i> Choose Video
+                <i class="fa fa-file-video"></i> Choose Single Video
             </label>
             <input id="file-upload" type="file" accept="video/*" />
-            <p id="file-name" style="font-size: 0.9em; margin-top: 10px; color: #aaa;">Default Video Loaded</p>
+
+            <label for="folder-upload" class="custom-file-upload">
+                <i class="fa fa-folder-open"></i> Choose Folder
+            </label>
+            <input id="folder-upload" type="file" webkitdirectory directory multiple />
         </div>
+
+        <p id="file-name" style="font-size: 0.9em; margin-top: 5px; color: #aaa;">Default Video Loaded</p>
 
         <button class="play-btn-large" style="display: none;">
             <i class="fa fa-play"></i> Start Experience
@@ -262,6 +347,12 @@
         <button id="play-pause-btn" class="control-btn">
             <i class="fa fa-pause"></i>
         </button>
+        <button id="prev-btn" class="control-btn" style="display:none">
+            <i class="fa fa-step-backward"></i>
+        </button>
+        <button id="next-btn" class="control-btn" style="display:none">
+            <i class="fa fa-step-forward"></i>
+        </button>
 
         <div class="progress-container">
             <input type="range" id="seek-bar" value="0" min="0" step="0.1">
@@ -269,6 +360,25 @@
 
         <div class="time-display">
             <span id="current-time">0:00</span> / <span id="duration">0:00</span>
+        </div>
+    </div>
+
+    <!-- Playlist Toggle Button (Visible when controls actove) -->
+    <button id="playlist-toggle">
+        <i class="fa fa-list"></i> Playlist
+    </button>
+
+    <!-- Playlist Container -->
+    <div id="playlist-container">
+        <div id="playlist-header">
+            <span>Playlist</span>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <span id="playlist-count" style="font-size: 0.8em; color: #aaa;">0 videos</span>
+                <i id="playlist-close" class="fa fa-chevron-up" style="cursor: pointer; padding: 5px;"></i>
+            </div>
+        </div>
+        <div id="playlist-list">
+            <!-- Items injected here -->
         </div>
     </div>
 
@@ -284,7 +394,7 @@
 
     <a-scene loading-screen="dotsColor: white; backgroundColor: black">
         <a-assets>
-            <video id="video360" src="https://cdn.aframe.io/360-video-and-images/antarctica.mp4" loop="true"
+            <video id="video360" src="https://cdn.aframe.io/360-video-and-images/antarctica.mp4" loop="false"
                 crossorigin="anonymous" playsinline webkit-playsinline></video>
         </a-assets>
 
@@ -313,12 +423,25 @@
             const currentTimeSpan = document.getElementById('current-time');
             const durationSpan = document.getElementById('duration');
             const fileInput = document.getElementById('file-upload');
+            const folderInput = document.getElementById('folder-upload');
             const fileNameDisplay = document.getElementById('file-name');
             const feedbackLeft = document.getElementById('seek-feedback-left');
             const feedbackRight = document.getElementById('seek-feedback-right');
 
+            // Playlist Elements
+            const playlistContainer = document.getElementById('playlist-container');
+            const playlistList = document.getElementById('playlist-list');
+            const playlistToggle = document.getElementById('playlist-toggle');
+            const playlistCount = document.getElementById('playlist-count');
+            const nextBtn = document.getElementById('next-btn');
+            const prevBtn = document.getElementById('prev-btn');
+
             let controlsTimeout;
             let isDragging = false; // For preventing control hide while seeking
+
+            // Playlist State
+            let playlist = [];
+            let currentVideoIndex = -1;
 
             // --- Initialization ---
 
@@ -332,11 +455,144 @@
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    const fileURL = URL.createObjectURL(file);
-                    video.src = fileURL;
-                    fileNameDisplay.textContent = file.name;
-                    video.load();
-                    playBtnLarge.style.display = 'flex';
+                    loadSingleFile(file);
+                }
+            });
+
+            // --- Folder Upload ---
+            folderInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                // Filter video files
+                const videoFiles = files.filter(f => f.type.startsWith('video/'));
+
+                if (videoFiles.length > 0) {
+                    // Sort alphanumerically
+                    videoFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                    initializePlaylist(videoFiles);
+                } else {
+                    alert('No video files found in the selected folder.');
+                }
+            });
+
+            function loadSingleFile(file) {
+                // Clear playlist mode
+                playlist = [];
+                currentVideoIndex = -1;
+                updatePlaylistUI(); // Hides playlist
+
+                const fileURL = URL.createObjectURL(file);
+                video.src = fileURL;
+                fileNameDisplay.textContent = file.name;
+                video.load();
+                playBtnLarge.style.display = 'flex';
+
+                // Hide playlist controls
+                playlistToggle.style.display = 'none';
+                nextBtn.style.display = 'none';
+                prevBtn.style.display = 'none';
+            }
+
+            function initializePlaylist(files) {
+                playlist = files;
+                currentVideoIndex = 0;
+                updatePlaylistUI();
+
+                // Load first video
+                loadPlaylistVideo(0);
+
+                // Show controls
+                playlistToggle.style.display = 'block';
+                playlistToggle.onclick = () => {
+                    playlistContainer.classList.add('visible');
+                    playlistContainer.style.display = 'block';
+                    playlistToggle.style.display = 'none'; // Hide toggle when open
+                };
+
+                const playlistClose = document.getElementById('playlist-close');
+                playlistClose.onclick = (e) => {
+                    e.stopPropagation();
+                    playlistContainer.style.display = 'none';
+                    playlistToggle.style.display = 'block'; // Show toggle when closed
+                };
+
+                nextBtn.style.display = 'flex';
+                prevBtn.style.display = 'flex';
+                playBtnLarge.style.display = 'flex';
+
+                fileNameDisplay.textContent = `${files.length} Videos Loaded`;
+            }
+
+            function loadPlaylistVideo(index) {
+                if (index < 0 || index >= playlist.length) return;
+
+                currentVideoIndex = index;
+                const file = playlist[index];
+                const fileURL = URL.createObjectURL(file);
+
+                // Revoke old URL if needed (optional optimization)
+
+                video.src = fileURL;
+                fileNameDisplay.textContent = `Playing: ${file.name}`;
+                video.load();
+
+                // If we are already in "playing" mode (overlay hidden), auto play
+                if (overlay.classList.contains('hidden')) {
+                    video.play().catch(console.error);
+                }
+
+                highlightCurrentPlaylistItem();
+            }
+
+            function updatePlaylistUI() {
+                playlistList.innerHTML = '';
+                playlistCount.textContent = `${playlist.length} videos`;
+
+                if (playlist.length === 0) {
+                    playlistContainer.style.display = 'none';
+                    return;
+                }
+
+                playlist.forEach((file, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'playlist-item';
+                    div.textContent = `${index + 1}. ${file.name}`;
+                    div.onclick = () => loadPlaylistVideo(index);
+                    playlistList.appendChild(div);
+                });
+
+                highlightCurrentPlaylistItem();
+            }
+
+            function highlightCurrentPlaylistItem() {
+                const items = playlistList.querySelectorAll('.playlist-item');
+                items.forEach((item, index) => {
+                    if (index === currentVideoIndex) {
+                        item.classList.add('active');
+                        // Scroll to active item
+                        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
+
+            // Playlist Control Buttons
+            nextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (playlist.length > 0) {
+                    let next = currentVideoIndex + 1;
+                    if (next >= playlist.length) next = 0; // Loop (optional) or stop
+                    loadPlaylistVideo(next);
+                }
+            });
+
+            prevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (playlist.length > 0) {
+                    let prev = currentVideoIndex - 1;
+                    if (prev < 0) prev = playlist.length - 1; // Loop
+                    loadPlaylistVideo(prev);
                 }
             });
 
@@ -391,8 +647,19 @@
             });
 
             video.addEventListener('ended', () => {
-                icon.className = 'fa fa-play';
-                controls.classList.remove('hidden-controls');
+                // Check if in playlist mode
+                if (playlist.length > 0 && currentVideoIndex < playlist.length - 1) {
+                    console.log("Video ended, playing next...");
+                    loadPlaylistVideo(currentVideoIndex + 1);
+                } else if (playlist.length > 0 && currentVideoIndex === playlist.length - 1) {
+                    // End of playlist
+                    icon.className = 'fa fa-play';
+                    controls.classList.remove('hidden-controls');
+                } else {
+                    // Single video
+                    icon.className = 'fa fa-play';
+                    controls.classList.remove('hidden-controls');
+                }
             });
 
             seekBar.addEventListener('input', () => {
@@ -498,12 +765,7 @@
                     }
                     lastTapTime = 0; // Reset
                 } else {
-                    // Single Tap - Wait to see if double tap happens
-                    // But for responsiveness, we usually toggle controls immediately
-                    // If a double tap follows, the seek overrides the toggle or we accept the flicker.
-                    // To avoid flicker, we can delay, but that feels laggy.
-                    // Let's just toggle controls on single tap.
-
+                    // Single Tap - toggles controls
                     if (controls.classList.contains('hidden-controls')) {
                         showControls();
                     } else {
@@ -526,7 +788,10 @@
                 if (!isClick) return;
 
                 // If touching controls, let it pass
-                if (e.target.closest('#video-controls') || e.target.closest('.play-btn-large')) return;
+                if (e.target.closest('#video-controls') ||
+                    e.target.closest('.play-btn-large') ||
+                    e.target.closest('#playlist-container') ||
+                    e.target.closest('#playlist-toggle')) return;
 
                 handleTap(e.changedTouches[0].clientX);
             }, true);
@@ -535,20 +800,14 @@
             window.addEventListener('mouseup', (e) => {
                 if (Date.now() - lastTouchEnd < 500) return; // Ignore ghost clicks
 
-                if (e.target.closest('#video-controls') || e.target.closest('.play-btn-large')) return;
+                if (e.target.closest('#video-controls') ||
+                    e.target.closest('.play-btn-large') ||
+                    e.target.closest('#playlist-container') ||
+                    e.target.closest('#playlist-toggle')) return;
 
                 handleTap(e.clientX);
             }, true);
 
-            // For touch, we need to handle touchend carefully
-            // we rely on click usually for hybrid, but touchend gives better "tap" feel
-            /*
-            document.addEventListener('touchend', (e) => {
-                // A-Frame sometimes consumes touch events or click events depending on configuration.
-                // We rely on standard click bubbling if possible, or use touchend if click is blocked.
-                // Let's stick to mouseup/click for consistency unless testing proves otherwise.
-            });
-            */
 
             function triggerFeedback(el) {
                 el.classList.remove('animate-feedback');
