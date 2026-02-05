@@ -418,32 +418,29 @@
                 </a-entity>
 
                 <!-- VR Controls HUD (Vertical Layout - Moved Up/Centered) -->
-                <!-- MOVED TO RIG -->
+                <!-- Head-Locked Timeline HUD -->
+                <a-entity id="vr-timeline" position="0 -0.7 -1.5" rotation="-15 0 0" visible="true">
+                    <!-- Background Track (Clickable) -->
+                    <a-box id="vr-timeline-bg" color="#333" width="1.5" height="0.1" depth="0.01" class="clickable"
+                        opacity="0.9"></a-box>
+
+                    <!-- Progress Bar (Dynamic) -->
+                    <a-box id="vr-timeline-progress" color="#e91e63" width="1.5" height="0.1" depth="0.012"
+                        position="-0.75 0 0.001" scale="0 1 1" pivot="0.5 0.5 0.5"></a-box>
+
+                    <!-- Hover Tooltip -->
+                    <a-entity id="vr-timeline-tooltip" visible="false" position="0 0.2 0">
+                        <a-plane color="#000" opacity="0.8" width="0.3" height="0.1"></a-plane>
+                        <a-text id="vr-tooltip-text" value="0:00" align="center" color="#FFF" width="4"
+                            position="0 0 0.01"></a-text>
+                    </a-entity>
+                </a-entity>
             </a-entity>
 
             <!-- VR Controls HUD (Attached to Rig - Body Locked) -->
             <a-entity id="vr-controls" position="0 1.3 -2.5" visible="false" rotation="0 0 0">
                 <!-- Background Panel (0.6 x 1.0) -->
                 <a-plane color="#000" opacity="0.7" width="0.6" height="1.0" position="0 0 0"></a-plane>
-
-                <!-- Timeline Bar -->
-                <a-entity id="vr-timeline" position="0 -0.25 0.01">
-                    <!-- Background Track (Clickable) -->
-                    <a-box id="vr-timeline-bg" color="#555" width="0.5" height="0.05" depth="0.01"
-                        class="clickable"></a-box>
-
-                    <!-- Progress Bar (Dynamic) -->
-                    <!-- Initial State: Scale 0, Position left-aligned (-0.25) -->
-                    <a-box id="vr-timeline-progress" color="#e91e63" width="0.5" height="0.05" depth="0.011"
-                        position="-0.25 0 0.001" scale="0 1 1"></a-box>
-
-                    <!-- Hover Tooltip -->
-                    <a-entity id="vr-timeline-tooltip" visible="false" position="0 0.1 0">
-                        <a-plane color="#000" opacity="0.8" width="0.15" height="0.05"></a-plane>
-                        <a-text id="vr-tooltip-text" value="0:00" align="center" color="#FFF" width="2"
-                            position="0 0 0.01"></a-text>
-                    </a-entity>
-                </a-entity>
             </a-entity>
 
             <!-- Controllers for Joystick Input -->
@@ -1329,7 +1326,90 @@
             // Add the component to the background
             if (vrTimelineBg) vrTimelineBg.setAttribute('vr-timeline-hover', '');
 
-            // Sync VR button state on normal play/pause
+            // --- Stereo Debug Mode ---
+            // Create Cameras for Stereo View (Simulation)
+            const rig = document.getElementById('camera-rig');
+            const head = document.getElementById('head');
+
+            // We need persistent cameras for stereo rendering
+            const camLeft = document.createElement('a-entity');
+            camLeft.setAttribute('camera', 'active: false');
+            camLeft.setAttribute('position', '-0.03 0 0'); // IPD offset left
+
+            const camRight = document.createElement('a-entity');
+            camRight.setAttribute('camera', 'active: false');
+            camRight.setAttribute('position', '0.03 0 0'); // IPD offset right
+
+            head.appendChild(camLeft);
+            head.appendChild(camRight);
+
+            const stereoBtn = document.createElement('button');
+            stereoBtn.textContent = "Stereo View";
+            stereoBtn.style.cssText = "position: absolute; top: 60px; right: 20px; z-index: 900; background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; display: none;";
+            document.body.appendChild(stereoBtn);
+
+            let isStereo = false;
+            let originalRender = null;
+
+            stereoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isStereo = !isStereo;
+                const scene = document.querySelector('a-scene');
+
+                if (isStereo) {
+                    stereoBtn.style.background = 'rgba(33, 150, 243, 0.8)';
+
+                    // Override render loop
+                    if (!originalRender) originalRender = scene.render;
+
+                    scene.render = function () {
+                        const renderer = scene.renderer;
+                        const size = renderer.getSize(new THREE.Vector2());
+
+                        // Render Left
+                        renderer.setScissorTest(true);
+                        renderer.setScissor(0, 0, size.x / 2, size.y);
+                        renderer.setViewport(0, 0, size.x / 2, size.y);
+                        scene.camera = camLeft.getObject3D('camera');
+                        renderer.render(scene.object3D, scene.camera);
+
+                        // Render Right
+                        renderer.setScissor(size.x / 2, 0, size.x / 2, size.y);
+                        renderer.setViewport(size.x / 2, 0, size.x / 2, size.y);
+                        scene.camera = camRight.getObject3D('camera');
+                        renderer.render(scene.object3D, scene.camera);
+
+                        // Restore
+                        renderer.setScissorTest(false);
+                    };
+                } else {
+                    stereoBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+                    // Restore original render
+                    scene.render = originalRender;
+                    // Reset Viewport
+                    const renderer = scene.renderer;
+                    const size = renderer.getSize(new THREE.Vector2());
+                    renderer.setViewport(0, 0, size.x, size.y);
+                    scene.camera = head.getObject3D('camera');
+                }
+            });
+
+            // Modify existing Debug VR toggle to show/hide Stereo button
+            const originalDebugBtn = document.getElementById('debug-vr-toggle');
+            originalDebugBtn.addEventListener('click', () => {
+                // If turning ON (we check isDebugVr inside the other handler, but here we check result style/text or duplicate state)
+                // Let's rely on the previous handler flipping the state variable.
+                // We need to delay slightly or share state. 
+                // Let's check visible style of controls since that's what the other handler sets.
+                setTimeout(() => {
+                    if (vrControls.getAttribute('visible') === 'true') {
+                        stereoBtn.style.display = 'block';
+                    } else {
+                        stereoBtn.style.display = 'none';
+                        if (isStereo) stereoBtn.click(); // turn off if exiting debug
+                    }
+                }, 50);
+            });
             video.addEventListener('play', () => {
                 updateVRPlayButton();
                 resetVRControlsTimer();
@@ -1344,14 +1424,9 @@
             video.addEventListener('timeupdate', () => {
                 if (video.duration && vrTimelineProgress) {
                     const ratio = video.currentTime / video.duration;
-                    // Update scale x
                     vrTimelineProgress.object3D.scale.x = ratio;
-                    // Update position x to keep left anchor
-                    // Width is 0.5. At scale 1, pos is 0. 
-                    // At scale s, width is 0.5*s.
-                    // We want left edge at -0.25.
-                    // Center should be -0.25 + (0.5*s)/2
-                    vrTimelineProgress.object3D.position.x = -0.25 + (0.25 * ratio);
+                    // Width 1.5 -> Left edge at -0.75
+                    vrTimelineProgress.object3D.position.x = -0.75 + (0.75 * ratio);
                 }
             });
         });
