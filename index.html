@@ -368,6 +368,12 @@
         <i class="fa fa-list"></i> Playlist
     </button>
 
+    <!-- Debug VR Toggle -->
+    <button id="debug-vr-toggle"
+        style="display:none; position: absolute; top: 20px; right: 20px; z-index: 900; background: rgba(0, 0, 0, 0.5); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">
+        Debug VR
+    </button>
+
     <!-- Playlist Container -->
     <div id="playlist-container">
         <div id="playlist-header">
@@ -399,7 +405,7 @@
         </a-assets>
 
         <!-- 360 Video Sphere -->
-        <a-videosphere src="#video360" rotation="0 -90 0"></a-videosphere>
+        <a-videosphere src="#video360" rotation="0 -90 0" class="clickable"></a-videosphere>
 
         <!-- Camera -->
         <a-entity camera look-controls="reverseMouseDrag: true" position="0 0 0">
@@ -407,6 +413,29 @@
             <a-entity cursor="fuse: false; rayOrigin: mouse;" position="0 0 -1"
                 geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
                 material="color: white; shader: flat; opacity: 0.5" visible="false">
+            </a-entity>
+
+            <!-- VR Controls HUD (Hidden by default, shown in VR) -->
+            <a-entity id="vr-controls" position="0 -0.5 -1.5" visible="false">
+                <!-- Background Panel -->
+                <a-plane color="#000" opacity="0.7" width="1.5" height="0.4" position="0 0 0"></a-plane>
+
+                <!-- Seek Back -->
+                <a-circle id="vr-seek-back" color="#FFF" radius="0.08" position="-0.4 0 0.01" class="clickable">
+                    <a-text value="-10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
+                </a-circle>
+
+                <!-- Play/Pause -->
+                <a-plane id="vr-play-btn" color="#e91e63" width="0.4" height="0.15" position="0 0 0.01"
+                    class="clickable">
+                    <a-text id="vr-play-text" value="PLAY" align="center" color="#FFF" position="0 0 0.01"
+                        width="3"></a-text>
+                </a-plane>
+
+                <!-- Seek Forward -->
+                <a-circle id="vr-seek-fwd" color="#FFF" radius="0.08" position="0.4 0 0.01" class="clickable">
+                    <a-text value="+10s" align="center" color="#000" position="0 0 0.01" width="2"></a-text>
+                </a-circle>
             </a-entity>
         </a-entity>
     </a-scene>
@@ -602,6 +631,32 @@
                 controls.classList.remove('hidden-controls');
                 video.play().catch(e => console.error("Play failed:", e));
                 resetControlsTimer();
+                // Show debug button
+                document.getElementById('debug-vr-toggle').style.display = 'block';
+            });
+
+            // --- Debug VR Toggle ---
+            const debugVrBtn = document.getElementById('debug-vr-toggle');
+            let isDebugVr = false;
+
+            debugVrBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isDebugVr = !isDebugVr;
+
+                if (isDebugVr) {
+                    debugVrBtn.style.background = 'rgba(233, 30, 99, 0.8)';
+                    debugVrBtn.textContent = 'Exit VR Debug';
+                    vrControls.setAttribute('visible', 'true');
+                    // Show gaze cursor
+                    const cursor = document.querySelector('[cursor]');
+                    if (cursor) cursor.setAttribute('visible', 'true');
+                } else {
+                    debugVrBtn.style.background = 'rgba(0, 0, 0, 0.5)';
+                    debugVrBtn.textContent = 'Debug VR';
+                    vrControls.setAttribute('visible', 'false');
+                    const cursor = document.querySelector('[cursor]');
+                    if (cursor) cursor.setAttribute('visible', 'false');
+                }
             });
 
             // --- Control Bar Logic ---
@@ -814,6 +869,109 @@
                 void el.offsetWidth; // trigger reflow
                 el.classList.add('animate-feedback');
             }
+
+            // --- VR Mode Handling ---
+            const scene = document.querySelector('a-scene');
+            const vrControls = document.getElementById('vr-controls');
+            const vrPlayBtn = document.getElementById('vr-play-btn');
+            const vrSeekBack = document.getElementById('vr-seek-back');
+            const vrSeekFwd = document.getElementById('vr-seek-fwd');
+            const vrPlayText = document.getElementById('vr-play-text');
+            const videosphere = document.querySelector('a-videosphere');
+
+            let vrControlsTimeout;
+
+            function updateVRPlayButton() {
+                if (video.paused) {
+                    vrPlayText.setAttribute('value', 'PLAY');
+                    vrPlayBtn.setAttribute('color', '#e91e63');
+                } else {
+                    vrPlayText.setAttribute('value', 'PAUSE');
+                    vrPlayBtn.setAttribute('color', '#2196F3');
+                }
+            }
+
+            function showVRControls() {
+                vrControls.setAttribute('visible', 'true');
+                resetVRControlsTimer();
+            }
+
+            function hideVRControls() {
+                if (!video.paused) {
+                    vrControls.setAttribute('visible', 'false');
+                }
+            }
+
+            function resetVRControlsTimer() {
+                clearTimeout(vrControlsTimeout);
+                vrControlsTimeout = setTimeout(hideVRControls, 3000);
+            }
+
+            scene.addEventListener('enter-vr', () => {
+                showVRControls();
+                const cursor = document.querySelector('[cursor]');
+                if (cursor) cursor.setAttribute('visible', 'true');
+            });
+
+            scene.addEventListener('exit-vr', () => {
+                clearTimeout(vrControlsTimeout);
+                vrControls.setAttribute('visible', 'false');
+                const cursor = document.querySelector('[cursor]');
+                if (cursor) cursor.setAttribute('visible', 'false');
+            });
+
+            // Toggle controls on videosphere click
+            videosphere.addEventListener('click', () => {
+                const isVisible = vrControls.getAttribute('visible') === 'true' || vrControls.getAttribute('visible') === true;
+                if (isVisible) {
+                    hideVRControls();
+                } else {
+                    showVRControls();
+                }
+            });
+
+            // VR Button Interactions
+            if (vrPlayBtn) {
+                vrPlayBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                    updateVRPlayButton();
+                    resetVRControlsTimer();
+                });
+                vrPlayBtn.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
+                vrPlayBtn.addEventListener('mouseleave', () => resetVRControlsTimer());
+            }
+
+            if (vrSeekBack) {
+                vrSeekBack.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    video.currentTime -= 10;
+                    resetVRControlsTimer();
+                });
+                vrSeekBack.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
+                vrSeekBack.addEventListener('mouseleave', () => resetVRControlsTimer());
+            }
+
+            if (vrSeekFwd) {
+                vrSeekFwd.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    video.currentTime += 10;
+                    resetVRControlsTimer();
+                });
+                vrSeekFwd.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
+                vrSeekFwd.addEventListener('mouseleave', () => resetVRControlsTimer());
+            }
+
+            // Sync VR button state on normal play/pause
+            video.addEventListener('play', () => {
+                updateVRPlayButton();
+                resetVRControlsTimer();
+            });
+            video.addEventListener('pause', () => {
+                updateVRPlayButton();
+                clearTimeout(vrControlsTimeout);
+                showVRControls();
+            });
 
         });
     </script>
