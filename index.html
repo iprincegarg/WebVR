@@ -442,9 +442,8 @@
             </a-entity>
 
             <!-- Controllers for Joystick Input -->
-            <!-- Left Controller (Media Controls) -->
-            <a-entity oculus-touch-controls="hand: left" laser-controls="hand: left"
-                raycaster="showLine: true; far: 10; objects: .clickable;" joystick-media-control="hand: left"
+            <!-- Left Controller (Media Controls - No Laser/Raycaster to prevent conflict) -->
+            <a-entity oculus-touch-controls="hand: left" joystick-media-control="hand: left"
                 button-media-control="hand: left">
             </a-entity>
             <!-- Right Controller -->
@@ -617,27 +616,34 @@
                 this.feedbackRight = document.getElementById('seek-feedback-right');
 
                 // Volume Up (A)
-                this.el.addEventListener('abuttondown', () => {
+                // Volume Up (A)
+                this.el.addEventListener('abuttondown', (e) => {
+                    if (e) e.stopPropagation();
                     this.changeVolume(0.1);
                 });
 
                 // Volume Down (B)
-                this.el.addEventListener('bbuttondown', () => {
+                this.el.addEventListener('bbuttondown', (e) => {
+                    if (e) e.stopPropagation();
                     this.changeVolume(-0.1);
                 });
 
                 // Forward 15s (X)
-                this.el.addEventListener('xbuttondown', () => {
+                this.el.addEventListener('xbuttondown', (e) => {
+                    if (e) e.stopPropagation();
                     this.seek(15, this.feedbackRight);
                 });
 
                 // Rewind 15s (Y)
-                this.el.addEventListener('ybuttondown', () => {
+                this.el.addEventListener('ybuttondown', (e) => {
+                    if (e) e.preventDefault(); // Try to prevent system menu if possible
+                    if (e) e.stopPropagation();
                     this.seek(-15, this.feedbackLeft);
                 });
 
                 // Play/Pause (Trigger)
-                this.el.addEventListener('triggerdown', () => {
+                this.el.addEventListener('triggerdown', (e) => {
+                    if (e) e.stopPropagation();
                     this.togglePlay();
                 });
             },
