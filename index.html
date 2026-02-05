@@ -417,26 +417,19 @@
                     material="color: white; shader: flat; opacity: 0.5" visible="false">
                 </a-entity>
 
-                <!-- VR Controls HUD (Attached to head so it stays in view) -->
+                <!-- VR Controls HUD (Vertical Layout) -->
                 <a-entity id="vr-controls" position="0 -0.5 -1.5" visible="false">
-                    <!-- Background Panel -->
-                    <a-plane color="#000" opacity="0.7" width="1.8" height="0.5" position="0 0 0"></a-plane>
+                    <!-- Background Panel (Taller, Narrower) -->
+                    <a-plane color="#000" opacity="0.7" width="0.6" height="1.0" position="0 0 0"></a-plane>
 
-                    <!-- Seek Back -->
-                    <a-circle id="vr-seek-back" color="#FFF" radius="0.15" position="-0.5 0 0.01" class="clickable">
-                        <a-text value="-15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
+                    <!-- Seek Forward (Top) -->
+                    <a-circle id="vr-seek-fwd" color="#FFF" radius="0.15" position="0 0.25 0.01" class="clickable">
+                        <a-text value="+15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
                     </a-circle>
 
-                    <!-- Play/Pause -->
-                    <a-plane id="vr-play-btn" color="#e91e63" width="0.5" height="0.25" position="0 0 0.01"
-                        class="clickable">
-                        <a-text id="vr-play-text" value="PLAY" align="center" color="#FFF" position="0 0 0.01"
-                            width="4"></a-text>
-                    </a-plane>
-
-                    <!-- Seek Forward -->
-                    <a-circle id="vr-seek-fwd" color="#FFF" radius="0.15" position="0.5 0 0.01" class="clickable">
-                        <a-text value="+15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
+                    <!-- Seek Back (Bottom) -->
+                    <a-circle id="vr-seek-back" color="#FFF" radius="0.15" position="0 -0.25 0.01" class="clickable">
+                        <a-text value="-15s" align="center" color="#000" position="0 0 0.01" width="3"></a-text>
                     </a-circle>
                 </a-entity>
             </a-entity>
@@ -1120,22 +1113,16 @@
             // --- VR Mode Handling ---
             const scene = document.querySelector('a-scene');
             const vrControls = document.getElementById('vr-controls');
-            const vrPlayBtn = document.getElementById('vr-play-btn');
+            // const vrPlayBtn = document.getElementById('vr-play-btn'); // Removed
             const vrSeekBack = document.getElementById('vr-seek-back');
             const vrSeekFwd = document.getElementById('vr-seek-fwd');
-            const vrPlayText = document.getElementById('vr-play-text');
+            // const vrPlayText = document.getElementById('vr-play-text'); // Removed
             const videosphere = document.querySelector('a-videosphere');
 
             let vrControlsTimeout;
 
             function updateVRPlayButton() {
-                if (video.paused) {
-                    vrPlayText.setAttribute('value', 'PLAY');
-                    vrPlayBtn.setAttribute('color', '#e91e63');
-                } else {
-                    vrPlayText.setAttribute('value', 'PAUSE');
-                    vrPlayBtn.setAttribute('color', '#2196F3');
-                }
+                // Removed Play Button UI updates
             }
 
             function showVRControls() {
@@ -1238,16 +1225,7 @@
             }, { passive: true });
 
             // VR Button Interactions
-            if (vrPlayBtn) {
-                vrPlayBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    togglePlay();
-                    updateVRPlayButton();
-                    resetVRControlsTimer();
-                });
-                vrPlayBtn.addEventListener('mouseenter', () => clearTimeout(vrControlsTimeout));
-                vrPlayBtn.addEventListener('mouseleave', () => resetVRControlsTimer());
-            }
+            // Removed vrPlayBtn listeners
 
             if (vrSeekBack) {
                 vrSeekBack.addEventListener('click', (e) => {
